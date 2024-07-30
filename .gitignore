@@ -1,5 +1,2 @@
-node_modules
 .env
-.firebaserc
-database.rules.json
-firebase-debug.log
+node_modules
