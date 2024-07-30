@@ -1,9 +1,11 @@
 async function loadBoxImage() {
     try {
-        const response = await fetch('/.netlify/functions/getBoxImage');
+        const response = await fetch('../../functions/getBoxImage');
         const data = await response.json();
+        const picture = data.body
+        console.log(picture)
 
-        if (data.imageUrl) {
+        if (data.picture) {
             document.getElementById('banko-picture').src = data.imageUrl;
         } else {
             console.error('Failed to load image URL');
