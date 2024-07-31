@@ -168,13 +168,20 @@ class Picture {
 }
 
 export default async (req) => {
-    // const { next_run } = await req.json()
-    // console.log("Received event! Next invocation at:", next_run)
+    const { next_run } = await req.json()
+    console.log("Received event! Next invocation at:", next_run)
+    // export default async function handler() {
 
     const box = new Box()
     const picture = new Picture()
     const heicFiles = await box.listItemsInFolder(process.env.BOX_HEIC_FOLDER_ID)
+    if (heicFiles !== undefined) {
+        console.log("Heic Files found", heicFiles)
+    }
     const convertedFiles = await box.listItemsInFolder(process.env.BOX_FOLDER_ID)
+    if (convertedFiles !== undefined) {
+        console.log("Heic Files found", convertedFiles)
+    }
 
     /** Error handling for heicFiles response / handling for total_count = 0 */
     switch (true) {
@@ -272,19 +279,19 @@ export default async (req) => {
         let base64img
         let fileURL
         switch (true) {
-            case (file?.name?.endsWith(".heic")): {
+            case (file?.name?.toLowerCase().endsWith(".heic")): {
                 fileURL = await box.getFile(file.id)
                 assert(fileURL !== undefined, "FileURL is undefined")
                 base64img = await picture.convertHeicUrlToJpgBase64(fileURL)
                 break;
             }
-            case (file?.name?.endsWith(".png")): {
+            case (file?.name?.toLowerCase().endsWith(".png")): {
                 fileURL = await box.getFile(file.id)
                 assert(fileURL !== undefined, "FileURL is undefined")
                 base64img = await picture.convertPngToJpgBase64(fileURL)
                 break;
             }
-            case (file?.name?.endsWith(".jpg") || file?.name?.endsWith(".jpeg")): {
+            case (file?.name?.toLowerCase().endsWith(".jpg") || file?.name?.endsWith(".jpeg")): {
                 fileURL = await box.getFile(file.id)
                 assert(fileURL !== undefined, "FileURL is undefined")
                 base64img = await picture.convertPngToJpgBase64(fileURL)
@@ -308,7 +315,8 @@ export default async (req) => {
         };
         const newName = file.trimmedName + ".jpg"
         const result = await box.uploadFile(newName, base64Buffer, options)
-        // console.log(result)
+        console.log(result)
     }
     return
 }
+// handler()
