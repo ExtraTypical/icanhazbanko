@@ -5,5 +5,22 @@ from = "/api/*"
 to = "/.netlify/functions/:splat"
 status = 200
 
+[functions]
+directory = "netlify/functions"
+
+[build]
+publish = "dist/"
+external_node_modules = [
+    "node:assert",
+    "box/box.mjs",
+    "box/pictures.mjs",
+    "box-node-sdk",
+    "dotenv/config",
+    "jimp",
+    "heic-convert",
+    "node:stream",
+]
+functions = "netlify/functions"
+
 [functions."convertBoxImages"]
 schedule = "@daily"

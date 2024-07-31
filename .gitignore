@@ -1,4 +1,6 @@
 .env
 node_modules
 config.json
-app/private/
+private
+# Local Netlify folder
+.netlify
