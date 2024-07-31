@@ -11,7 +11,7 @@ async function loadBoxImage() {
     }
 
     try {
-        const response = await fetch('/.netlify/functions/getBoxImage');
+        const response = await fetch('/api/getBoxImage');
         const data = await response.json();
 
         const newImage = new Image();
