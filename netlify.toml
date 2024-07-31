@@ -9,7 +9,7 @@ status = 200
 directory = "netlify/functions"
 
 [build]
-publish = "app/"
+publish = "/"
 external_node_modules = [
     "node:assert",
     "box/box.mjs",
