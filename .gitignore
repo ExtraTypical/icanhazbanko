@@ -4,3 +4,4 @@ config.json
 private
 # Local Netlify folder
 .netlify
+functions
