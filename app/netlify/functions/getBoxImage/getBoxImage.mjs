@@ -126,7 +126,7 @@ export async function handler(event, context) {
         }
 
         const min = 0
-        const max = items?.total_count
+        const max = items?.entries.length
         const randomNumber = Math.floor(Math.random() * (max - min)) + min
         const file = await box.getRandomFile(randomNumber)
 
