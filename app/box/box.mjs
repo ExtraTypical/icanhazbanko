@@ -76,7 +76,7 @@ export default class Box {
         assert(randomNumber !== undefined, "Random number is undefined, meaning that it wasn't properly passed to the function.")
         assert(typeof randomNumber === "number", "typeof randomNumber is not number, and this function requires it to be a number.")
         assert(this.files !== undefined, "File are undefined - make sure to call listItemsInFolder() first and that there are files in the requested folder.")
-        assert(this.files.entries.length >= randomNumber, "Random number exceeds range of available files.")
+        assert(this.files.entries.length > randomNumber, "Random number exceeds range of available files.")
 
 
         response.fileID = this.files?.entries[randomNumber]?.id
