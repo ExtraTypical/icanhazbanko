@@ -2,7 +2,7 @@ import 'dotenv/config'
 import assert from 'node:assert'
 import BoxSDK from 'box-node-sdk'
 
-export default class Box {
+class Box {
     constructor() {
         assert(process.env.BOX_CLIENT_ID !== undefined, "Client ID is equal to undefined, meaning that there's something wrong with how the environmental variables are working.")
         assert(process.env.BOX_CLIENT_SECRET !== undefined, "Client Secret is equal to undefined, meaning that there's something wrong with how the environmental variables are working.")
@@ -28,7 +28,7 @@ export default class Box {
         this.client = this.sdk.getAppAuthClient('enterprise', this.enterpriseID)
 
     }
-    async listItemsInFolder(folderID) {
+    async listItemsInFolder(folderID, offset) {
         /**
          * ```js
          * const TypeItemsStruct = {
@@ -53,11 +53,11 @@ export default class Box {
         */
         assert(folderID !== undefined, "folderID is undefined, meaning that it wasn't passed into this function")
         assert(typeof folderID === 'string', "Typeof folderID is not string, actual type is ", typeof folderID)
+        assert(typeof offset === 'number', "Offset is either undefined or not typeof number")
         this.files = await this.client.folders.getItems(folderID, {
             usemarker: 'false',
             fields: 'name',
-            offset: 0,
-            limit: 25
+            offset: offset,
         })
         return this.files
     }
@@ -87,5 +87,25 @@ export default class Box {
     async uploadFile(filename, stream, options) {
         const request = await this.client.files.uploadFile(this.folderID, filename, stream, options)
         return request
+    }
+    async getAllFilesInFolder(folderID) {
+        const entriesArray = [];
+        let offset = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+            try {
+                const files = await this.listItemsInFolder(folderID, offset);
+                entriesArray.push(...files.entries);
+
+                offset += files.entries.length;
+                hasMore = files.entries.length > 0 && entriesArray.length < files.total_count;
+            } catch (error) {
+                console.error('Error fetching files:', error);
+                break;
+            }
+        }
+
+        return entriesArray;
     }
 }

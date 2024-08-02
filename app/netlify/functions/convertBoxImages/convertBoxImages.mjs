@@ -30,7 +30,7 @@ class Box {
         this.client = this.sdk.getAppAuthClient('enterprise', this.enterpriseID)
 
     }
-    async listItemsInFolder(folderID) {
+    async listItemsInFolder(folderID, offset) {
         /**
          * ```js
          * const TypeItemsStruct = {
@@ -55,11 +55,11 @@ class Box {
         */
         assert(folderID !== undefined, "folderID is undefined, meaning that it wasn't passed into this function")
         assert(typeof folderID === 'string', "Typeof folderID is not string, actual type is ", typeof folderID)
+        assert(typeof offset === 'number', "Offset is either undefined or not typeof number")
         this.files = await this.client.folders.getItems(folderID, {
             usemarker: 'false',
             fields: 'name',
-            offset: 0,
-            limit: 25
+            offset: offset,
         })
         return this.files
     }
@@ -89,6 +89,26 @@ class Box {
     async uploadFile(filename, stream, options) {
         const request = await this.client.files.uploadFile(this.folderID, filename, stream, options)
         return request
+    }
+    async getAllFilesInFolder(folderID) {
+        const entriesArray = [];
+        let offset = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+            try {
+                const files = await this.listItemsInFolder(folderID, offset);
+                entriesArray.push(...files.entries);
+
+                offset += files.entries.length;
+                hasMore = files.entries.length > 0 && entriesArray.length < files.total_count;
+            } catch (error) {
+                console.error('Error fetching files:', error);
+                break;
+            }
+        }
+
+        return entriesArray;
     }
 }
 class Picture {
@@ -167,41 +187,21 @@ class Picture {
     }
 }
 
-export default async (req) => {
-    const { next_run } = await req.json()
-    console.log("Received event! Next invocation at:", next_run)
-    // export default async function handler() {
+// export default async (req) => {
+//     const { next_run } = await req.json()
+//     console.log("Received event! Next invocation at:", next_run)
+export default async function handler() {
 
     const box = new Box()
     const picture = new Picture()
-    const heicFiles = await box.listItemsInFolder(process.env.BOX_HEIC_FOLDER_ID)
-    if (heicFiles !== undefined) {
-        console.log("Heic Files found", heicFiles)
-    }
-    const convertedFiles = await box.listItemsInFolder(process.env.BOX_FOLDER_ID)
-    if (convertedFiles !== undefined) {
-        console.log("Heic Files found", convertedFiles)
-    }
+
+    const heicFiles = await box.getAllFilesInFolder(process.env.BOX_HEIC_FOLDER_ID)
+    const convertedFiles = await box.getAllFilesInFolder(process.env.BOX_FOLDER_ID)
 
     /** Error handling for heicFiles response / handling for total_count = 0 */
     switch (true) {
         case (heicFiles === undefined): {
             const error = "items returned as undefined, which means there was a problem with the call"
-            console.error(error)
-            return error
-        }
-        case (heicFiles.total_count === undefined): {
-            const error = "items.total_count is equal to undefined, meaning that there's something wrong with the payload"
-            console.error(error)
-            return error
-        }
-        case (heicFiles?.total_count === 0): {
-            const message = "Total count of files is equal to 0, so there are no photos to update."
-            console.log(message)
-            return message
-        }
-        case (heicFiles?.entries === undefined): {
-            const error = "Entries are undefined, meaning there's a problem with the payload"
             console.error(error)
             return error
         }
@@ -213,15 +213,10 @@ export default async (req) => {
             console.error(error)
             return error
         }
-        case (convertedFiles.total_count === undefined): {
-            const error = "items.total_count is equal to undefined, meaning that there's something wrong with the payload"
-            console.error(error)
-            return error
-        }
     }
 
     const heicFilesArray = []
-    for (let i = 0; i < heicFiles?.entries?.length; i++) {
+    for (let i = 0; i < heicFiles?.length; i++) {
         /** Struct for easy review */
         let itemStruct = {
             type: "string",
@@ -229,20 +224,20 @@ export default async (req) => {
             etag: "string",
             name: "string"
         }
-        if (heicFiles?.entries[i]?.name?.includes(".")) {
-            let trimmedName = heicFiles?.entries[i].name.split(".")[0]
+        if (heicFiles[i]?.name?.includes(".")) {
+            let trimmedName = heicFiles[i].name.split(".")[0]
             heicFilesArray.push({
-                id: heicFiles?.entries[i].id,
-                name: heicFiles?.entries[i].name,
+                id: heicFiles[i].id,
+                name: heicFiles[i].name,
                 trimmedName: trimmedName,
-                type: heicFiles?.entries[i].type
+                type: heicFiles[i].type
             })
         }
     }
 
     const convertedFilesArray = []
-    if (convertedFiles.entries.length !== 0) {
-        for (let i = 0; i < convertedFiles?.entries?.length; i++) {
+    if (convertedFiles.length !== 0) {
+        for (let i = 0; i < convertedFiles?.length; i++) {
             /** Struct for easy review */
             let itemStruct = {
                 type: "string",
@@ -250,13 +245,13 @@ export default async (req) => {
                 etag: "string",
                 name: "string"
             }
-            if (convertedFiles?.entries[i]?.name?.includes(".")) {
-                let trimmedName = convertedFiles?.entries[i].name.split(".")[0]
+            if (convertedFiles[i]?.name?.includes(".")) {
+                let trimmedName = convertedFiles[i].name.split(".")[0]
                 convertedFilesArray.push({
-                    id: convertedFiles?.entries[i].id,
-                    name: convertedFiles?.entries[i].name,
+                    id: convertedFiles[i].id,
+                    name: convertedFiles[i].name,
                     trimmedName: trimmedName,
-                    type: convertedFiles?.entries[i].type
+                    type: convertedFiles[i].type
                 })
             }
         }
@@ -276,23 +271,35 @@ export default async (req) => {
 
     for (let i = 0; i < uniqueFiles.length; i++) {
         let file = uniqueFiles[i]
+        console.log(`Iteration ${i}`)
         let base64img
         let fileURL
         switch (true) {
             case (file?.name?.toLowerCase().endsWith(".heic")): {
                 fileURL = await box.getFile(file.id)
+                console.log(fileURL)
                 assert(fileURL !== undefined, "FileURL is undefined")
-                base64img = await picture.convertHeicUrlToJpgBase64(fileURL)
+                try {
+                    base64img = await picture.convertHeicUrlToJpgBase64(fileURL)
+                } catch (err) {
+                    if (JSON.stringify(err).includes("input buffer is not a HEIC image")) {
+                        base64img = await picture.convertPngToJpgBase64(fileURL)
+                    } else {
+                        continue
+                    }
+                }
                 break;
             }
             case (file?.name?.toLowerCase().endsWith(".png")): {
                 fileURL = await box.getFile(file.id)
+                console.log(fileURL)
                 assert(fileURL !== undefined, "FileURL is undefined")
                 base64img = await picture.convertPngToJpgBase64(fileURL)
                 break;
             }
             case (file?.name?.toLowerCase().endsWith(".jpg") || file?.name?.endsWith(".jpeg")): {
                 fileURL = await box.getFile(file.id)
+                console.log(fileURL)
                 assert(fileURL !== undefined, "FileURL is undefined")
                 base64img = await picture.convertPngToJpgBase64(fileURL)
                 break;
@@ -319,4 +326,4 @@ export default async (req) => {
     }
     return
 }
-// handler()
+handler()
