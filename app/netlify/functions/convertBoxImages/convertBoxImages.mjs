@@ -187,10 +187,10 @@ class Picture {
     }
 }
 
-// export default async (req) => {
-//     const { next_run } = await req.json()
-//     console.log("Received event! Next invocation at:", next_run)
-export default async function handler() {
+export default async (req) => {
+    const { next_run } = await req.json()
+    console.log("Received event! Next invocation at:", next_run)
+    // export default async function handler() {
 
     const box = new Box()
     const picture = new Picture()
@@ -326,4 +326,4 @@ export default async function handler() {
     }
     return
 }
-handler()
+// handler()
